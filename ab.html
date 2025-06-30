@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI CV Matcher Tool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Basic Reset & Body Styling */
+        body {
+            font-family: 'Roboto', sans-serif; /* Use Google Font or fallback */
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6; /* Light background */
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 25px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #0056b3; /* A nice blue */
+            margin-bottom: 30px;
+            font-weight: 700;
+            font-size: 2.2em;
+        }
+
+        h2 {
+            color: #0056b3;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            font-size: 1.6em;
+        }
+
+        /* Card Styling for Sections */
+        .card {
+            background-color: #fcfcfc;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .instruction {
+            font-size: 0.95em;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        /* Input & Textarea Styling */
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+            resize: vertical; /* Allow vertical resizing */
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        }
+
+        /* Button Styling */
+        button {
+            background-color: #007bff; /* Primary blue */
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            display: block; /* Make button full width for better mobile experience */
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #0056b3; /* Darker blue on hover */
+            transform: translateY(-2px); /* Slight lift effect */
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Results Section Styling */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Responsive grid */
+            gap: 20px; /* Space between cards */
+            margin-top: 20px;
+        }
+
+        .result-card {
+            background-color: #eaf6ff; /* Light blue background for results */
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; /* Push download link to bottom */
+        }
+
+        .result-card h3 {
+            color: #004085;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+
+        .result-card p {
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .result-card p strong {
+            color: #004085;
+        }
+
+        .score-value {
+            font-weight: 700;
+            color: #28a745; /* Green for score */
+        }
+
+        .result-card .download-link {
+            display: inline-block;
+            margin-top: 15px;
+            background-color: #28a745; /* Green button for download */
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: background-color 0.3s ease;
+            align-self: flex-start; /* Align link to the start of the card */
+        }
+
+        .result-card .download-link:hover {
+            background-color: #218838;
+        }
+
+        /* Messages and Loading Indicator */
+        .message {
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #007bff;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto; /* Center the spinner below the button */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .container {
+                margin: 20px 15px;
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            h2 {
+                font-size: 1.4em;
+            }
+
+            .results-grid {
+                grid-template-columns: 1fr; /* Single column on smaller screens */
+            }
+
+            button {
+                padding: 10px 20px;
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI CV Matching Tool</h1>
+
+        <section class="card" id="upload-section">
+            <h2>Upload CVs (PDF/DOCX)</h2>
+            <p class="instruction">Select one or more CVs to analyze.</p>
+            <input type="file" id="cv-upload" multiple accept=".pdf,.docx" aria-label="Upload CVs" />
+        </section>
+
+        <section class="card" id="jd-section">
+            <h2>Paste Job Description</h2>
+            <p class="instruction">Enter the job description you want to match against.</p>
+            <textarea id="job-description" rows="10" placeholder="Paste job description here..." aria-label="Job Description"></textarea>
+            <button id="match-button" onclick="submitJobDescription()">Match CVs</button>
+            <div id="loading-indicator" class="loading-spinner" style="display: none;"></div>
+        </section>
+
+        <section class="card" id="results-section">
+            <h2>Top Matching CVs</h2>
+            <p id="results-message" class="message"></p>
+            <div id="results" class="results-grid">
+                </div>
+        </section>
+    </div>
+
+    <script>
+        async function submitJobDescription() {
+            const jobDescriptionElement = document.getElementById("job-description");
+            const cvUploadElement = document.getElementById("cv-upload");
+            const matchButton = document.getElementById("match-button");
+            const loadingIndicator = document.getElementById("loading-indicator");
+            const resultsContainer = document.getElementById("results");
+            const resultsMessage = document.getElementById("results-message");
+
+            const jd = jobDescriptionElement.value.trim();
+            const files = cvUploadElement.files;
+
+            resultsContainer.innerHTML = ""; // Clear previous results
+            resultsMessage.textContent = ""; // Clear previous messages
+
+            if (!jd) {
+                resultsMessage.textContent = "Please enter a job description.";
+                resultsMessage.className = "message error";
+                return;
+            }
+
+            if (files.length === 0) {
+                resultsMessage.textContent = "Please upload at least one CV.";
+                resultsMessage.className = "message error";
+                return;
+            }
+
+            // Disable button and show loading spinner
+            matchButton.disabled = true;
+            loadingIndicator.style.display = "block";
+            resultsMessage.textContent = "Matching CVs, please wait...";
+            resultsMessage.className = "message info";
+
+
+            const formData = new FormData();
+            formData.append("job_description", jd);
+            for (let file of files) {
+                formData.append("cvs", file);
+            }
+
+            try {
+                const res = await fetch("/api/match", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!res.ok) { // Check for HTTP errors (e.g., 404, 500)
+                    const errorText = await res.text(); // Get raw error message from server
+                    throw new Error(`HTTP error! Status: ${res.status} - ${errorText}`);
+                }
+
+                const data = await res.json();
+
+                if (data.matches && data.matches.length > 0) {
+                    resultsMessage.textContent = `Found ${data.matches.length} matching CV(s).`;
+                    resultsMessage.className = "message success";
+                    data.matches.forEach(match => {
+                        const card = document.createElement("div");
+                        card.className = "result-card";
+                        card.innerHTML = `
+                            <h3>${match.name}</h3>
+                            <p><strong>Score:</strong> <span class="score-value">${match.score}%</span></p>
+                            <p><strong>Reason:</strong> ${match.explanation}</p>
+                            <a href="${match.pdf_link}" target="_blank" class="download-link">Download CV</a>
+                        `;
+                        resultsContainer.appendChild(card);
+                    });
+                } else {
+                    resultsMessage.textContent = "No matching CVs found for the provided job description.";
+                    resultsMessage.className = "message warning";
+                }
+
+            } catch (error) {
+                console.error("Error matching CVs:", error);
+                resultsMessage.textContent = `An error occurred: ${error.message}. Please try again.`;
+                resultsMessage.className = "message error";
+            } finally {
+                // Re-enable button and hide loading spinner
+                matchButton.disabled = false;
+                loadingIndicator.style.display = "none";
+            }
+        }
+    </script>
+</body>
+</html>
