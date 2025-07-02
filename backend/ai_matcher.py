@@ -1,74 +1,92 @@
-from openai import OpenAI
-import os
+import requests
+import re
+from config import Config
 
-# Ensure OPENAI_API_KEY is loaded from .env
-from dotenv import load_dotenv
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
+def get_ollama_response(prompt_text, model=Config.OLLAMA_MODEL):
+    messages = [
+        {
+            "role": "system", 
+            "content": "You are a CV matching assistant. Provide:\n1. Score (0-100%)\n2. Concise explanation\n\nFormat EXACTLY like this:\nScore: [NUMBER]%\nExplanation: [TEXT]"
+        },
+        {
+            "role": "user", 
+            "content": prompt_text
+        }
+    ]
+    
+    payload = {
+        "model": model,
+        "messages": messages,
+        "stream": False,
+        "options": {
+            "temperature": 0.3,
+            "num_ctx": 1024,
+            "num_predict": 100
+        }
+    }
 
-loaded_key = os.getenv('OPENAI_API_KEY')
-print(f"DEBUG: Value of OPENAI_API_KEY from .env: '{loaded_key}'")
-if loaded_key:
-    print(f"DEBUG: First 5 characters: {loaded_key[:5]}")
-else:
-    print("DEBUG: OPENAI_API_KEY is None or empty!")
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-def get_gpt_response(prompt_text, model="gpt-3.5-turbo"):
-    """Sends a prompt to the OpenAI GPT model and returns the response."""
     try:
-        chat_completion = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant for CV matching. Provide a score out of 100 and a concise explanation."},
-                {"role": "user", "content": prompt_text}
-            ],
-            temperature=0.7, # Controls randomness: lower for more focused, higher for more creative
-            max_tokens=300 # Limit response length
+        response = requests.post(
+            f"{Config.OLLAMA_API_BASE_URL}/api/chat",
+            json=payload,
+            timeout=120
         )
-        return chat_completion.choices[0].message.content
+        response.raise_for_status()
+        return response.json().get('message', {}).get('content', '')
+    
+    except requests.exceptions.Timeout:
+        print("\n Timeout! Try these fixes:")
+        print("- Reduce CV/job description length")
+        print("- Lower model size or use a smaller one like `gemma:2b-instruct`")
+        print("- Check CPU usage in Task Manager")
+        return None
+    except requests.exceptions.ConnectionError:
+        print(f"Error: Could not connect to Ollama at {Config.OLLAMA_API_BASE_URL}")
+        print("1. Ensure Ollama is running: `ollama serve`")
+        print("2. Verify port matches config.py")
+        return None
     except Exception as e:
-        print(f"Error calling OpenAI API: {e}")
+        print(f"Ollama API Error: {str(e)}")
         return None
 
 def evaluate_cv_with_ai(job_description, cv_text):
-    """
-    Evaluates a CV against a job description using GPT-3.5.
-    Returns a score and an explanation.
-    """
+    MAX_LENGTH = 750
+    
     prompt = f"""
-    Job Description:
-    ---
-    {job_description}
-    ---
+    Analyze this job application:
 
-    Candidate CV:
-    ---
-    {cv_text}
-    ---
+    [JOB DESCRIPTION]
+    {job_description[:MAX_LENGTH]}
 
-    Based on the Job Description and the Candidate CV, evaluate the fit.
-    Provide a match score (0-100) and a concise explanation (2-3 sentences)
-    highlighting key strengths and weaknesses relative to the job description.
+    [CANDIDATE CV]
+    {cv_text[:MAX_LENGTH]}
 
-    Format your response strictly as:
-    Score: [SCORE]%
-    Explanation: [EXPLANATION TEXT]
+    Provide:
+    1. Match score (0-100%)
+    2. Brief explanation
+
+    Format EXACTLY like this:
+    Score: [NUMBER]%
+    Explanation: [TEXT]
     """
-    response_text = get_gpt_response(prompt)
+    
+    response_text = get_ollama_response(prompt)
 
-    if response_text:
-        score = 0
-        explanation = "N/A"
-        lines = response_text.split('\n')
-        for line in lines:
-            if line.startswith("Score:"):
-                try:
-                    score_str = line.split("Score:")[1].strip().replace('%', '')
-                    score = int(float(score_str)) # Use float for robustness, then int
-                except ValueError:
-                    pass
-            elif line.startswith("Explanation:"):
-                explanation = line.split("Explanation:")[1].strip()
-        return score, explanation
-    return 0, "Failed to get AI response."
+    if not response_text:
+        return 0, "AI service unavailable"
+
+    print("Raw AI response:\n", response_text)  # Optional debug log
+
+    # Parse score and explanation using regex
+    score = 0
+    explanation = "No explanation provided"
+
+    score_match = re.search(r"Score:\s*(\d+)%", response_text, re.IGNORECASE)
+    if score_match:
+        score = int(score_match.group(1))
+
+    explanation_match = re.search(r"Explanation:\s*(.+)", response_text, re.IGNORECASE)
+    if explanation_match:
+        explanation = explanation_match.group(1).strip()
+
+    return score, explanation
