@@ -1,27 +1,32 @@
 import requests
 import re
 from config import Config
+from nlp_processor import extract_keywords # Import the spaCy function
+
+# Ensure that the spaCy model is loaded only once when text_processing is imported
+# This is handled within text_processing.py to avoid redundant loading.
 
 def get_ollama_response(prompt_text, model=Config.OLLAMA_MODEL):
     messages = [
         {
-            "role": "system", 
-            "content": "You are a CV matching assistant. Provide:\n1. Score (0-100%)\n2. Concise explanation\n\nFormat EXACTLY like this:\nScore: [NUMBER]%\nExplanation: [TEXT]"
+            "role": "system",
+            "content": "You are a highly analytical CV matching assistant. Your goal is to provide a precise match score (0-100%) and a concise explanation. Consider both hard skills, soft skills, experience relevance, and keyword presence. A 100% score means an almost perfect, ideal candidate. A 0% score means absolutely no match. Be critical and provide a realistic assessment. Format EXACTLY like this:\nScore: [NUMBER]%\nExplanation: [TEXT]"
         },
         {
-            "role": "user", 
+            "role": "user",
             "content": prompt_text
         }
     ]
-    
+
     payload = {
         "model": model,
         "messages": messages,
         "stream": False,
         "options": {
-            "temperature": 0.3,
-            "num_ctx": 1024,
-            "num_predict": 100
+            "temperature": 0.5, # Good balance between determinism and creativity
+            "num_ctx": 2000,    # Increased context window for potentially more text
+                                # Ensure your Ollama model (e.g., Llama3) supports this or adjust
+            "num_predict": 200  # Allow for more detailed explanations
         }
     }
 
@@ -33,7 +38,7 @@ def get_ollama_response(prompt_text, model=Config.OLLAMA_MODEL):
         )
         response.raise_for_status()
         return response.json().get('message', {}).get('content', '')
-    
+
     except requests.exceptions.Timeout:
         print("\n Timeout! Try these fixes:")
         print("- Reduce CV/job description length")
@@ -50,26 +55,47 @@ def get_ollama_response(prompt_text, model=Config.OLLAMA_MODEL):
         return None
 
 def evaluate_cv_with_ai(job_description, cv_text):
-    MAX_LENGTH = 750
-    
+    # Use MAX_PROMPT_TEXT_LENGTH from Config for consistency
+    max_text_for_llm = getattr(Config, 'MAX_PROMPT_TEXT_LENGTH', 2500)
+    max_keywords_display = getattr(Config, 'MAX_KEYWORDS_IN_PROMPT', 30)
+
+    # 1. Extract Keywords from Job Description and CV using spaCy
+    jd_keywords = extract_keywords(job_description)
+    cv_keywords = extract_keywords(cv_text)
+
+    # Convert lists of keywords to strings for inclusion in the prompt
+    # Limit the number of keywords to avoid prompt overflow, especially for very long texts
+    jd_keywords_str = ", ".join(jd_keywords[:max_keywords_display])
+    cv_keywords_str = ", ".join(cv_keywords[:max_keywords_display])
+
+    # 2. Construct the enhanced prompt with extracted keywords
     prompt = f"""
-    Analyze this job application:
+    Analyze this job application and candidate CV for a precise match score. Focus on the following aspects:
+    - **Required Skills:** Are all key technical and soft skills present? (e.g., Python, SQL, communication, teamwork)
+    - **Experience Relevance:** How closely does the candidate's past work experience align with the job's duties and responsibilities?
+    - **Keywords:** Are important keywords from the job description found in the CV?
+    - **Years of Experience:** Does the candidate meet the stated years of experience requirements?
+    - **Education:** Is the educational background relevant?
 
-    [JOB DESCRIPTION]
-    {job_description[:MAX_LENGTH]}
+    Here's a breakdown of extracted keywords for closer evaluation:
 
-    [CANDIDATE CV]
-    {cv_text[:MAX_LENGTH]}
+    [JOB DESCRIPTION DETAILS]
+    Extracted Keywords: {jd_keywords_str}
+    Full Job Description (Excerpt): {job_description[:max_text_for_llm]}
+
+    [CANDIDATE CV DETAILS]
+    Extracted Keywords: {cv_keywords_str}
+    Full Candidate CV (Excerpt): {cv_text[:max_text_for_llm]}
 
     Provide:
     1. Match score (0-100%)
-    2. Brief explanation
+    2. Brief explanation highlighting key strengths and weaknesses based on the criteria above and the provided keywords.
 
     Format EXACTLY like this:
     Score: [NUMBER]%
     Explanation: [TEXT]
     """
-    
+
     response_text = get_ollama_response(prompt)
 
     if not response_text:
@@ -84,8 +110,9 @@ def evaluate_cv_with_ai(job_description, cv_text):
     score_match = re.search(r"Score:\s*(\d+)%", response_text, re.IGNORECASE)
     if score_match:
         score = int(score_match.group(1))
+        score = max(0, min(score, 100))
 
-    explanation_match = re.search(r"Explanation:\s*(.+)", response_text, re.IGNORECASE)
+    explanation_match = re.search(r"Explanation:\s*([\s\S]+)", response_text, re.IGNORECASE)
     if explanation_match:
         explanation = explanation_match.group(1).strip()
 
