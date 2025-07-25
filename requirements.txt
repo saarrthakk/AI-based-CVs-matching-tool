@@ -1,0 +1,6 @@
+Flask
+Werkzeug
+SQLAlchemy
+PyPDF2
+python-docx
+requests
