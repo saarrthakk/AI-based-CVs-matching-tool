@@ -1,0 +1,38 @@
+config.py
+# Byte-compiled / optimized / C extensions
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+# This is the folder that holds all your project-specific packages.
+# It can be easily recreated from requirements.txt, so it shouldn't be in version control.
+venv/
+env/
+*.env
+
+# Environment variables
+# IMPORTANT: This file contains sensitive information like API keys.
+# It must NOT be committed to GitHub.
+.env
+.env.*
+
+# Database files
+# The database will be generated automatically when the app runs.
+# Committing it can lead to merge conflicts.
+*.sqlite
+*.sqlite3
+
+# Uploads folder
+# This folder contains user-uploaded data and should not be part of the repository.
+uploads/
+
+# IDE / Editor specific files
+# These are configuration files for your code editor and are specific to your local setup.
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
