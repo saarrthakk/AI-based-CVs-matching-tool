@@ -16,19 +16,21 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Ensuring the upload folder exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# check if uploaded file has an allowed extension
 def allowed_file(filename):
-    """Checks if the uploaded file has an allowed extension."""
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
+
+# renders the main page
 def index():
-    """Renders the main HTML page."""
     return render_template('index.html')
 
 @app.route('/upload-cv', methods=['POST'])
+
+# handling CV uploads
 def upload_cv():
-    """Handles CV file uploads."""
     if 'files[]' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     
@@ -71,8 +73,9 @@ def upload_cv():
 
 
 @app.route('/match-cvs', methods=['POST'])
+
+# matches CVs against a job description
 def match_cvs():
-    """Matches uploaded CVs against a job description."""
     data = request.get_json()
     if not data or 'job_description' not in data:
         return jsonify({'error': 'Job description is required'}), 400
@@ -87,11 +90,11 @@ def match_cvs():
     results = []
     for cv in all_cvs:
         try:
-            # Get AI-powered match result
+            # AI matching result
             match_result_str = get_ai_match(cv.content, job_description)
             match_result = json.loads(match_result_str) # The AI returns a JSON string
 
-            # Ensure the result has the expected keys
+            # Ensuring the result has the expected keys
             if 'match_score' in match_result and 'explanation' in match_result:
                  results.append({
                     'filename': cv.filename,
@@ -112,7 +115,7 @@ def match_cvs():
             })
         except Exception as e:
             print(f"Error matching CV {cv.filename}: {e}")
-            # Optionally, you could add an error status to the result for this CV
+            # if any error occurs
             results.append({
                 'filename': cv.filename,
                 'score': 0,
@@ -126,7 +129,6 @@ def match_cvs():
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
-    """Removes the database session at the end of the request."""
     db_session.remove()
 
 if __name__ == '__main__':
