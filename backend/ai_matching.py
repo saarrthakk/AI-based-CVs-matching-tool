@@ -8,9 +8,7 @@ API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-f
 
 # this function uses the Gemini model to get a match score and explanation for the CV against job description
 def get_ai_match(cv_text, job_description):
-    """
-    Uses an AI model to get a match score and explanation for a CV and job description.
-    """
+    
     # this will give a mock response if the API key is not set
     if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY":
         

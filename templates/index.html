@@ -70,12 +70,12 @@
                 </form>
             </section>
 
-            <!-- Results Section -->
+            <!-- Step 3: Display Results -->
             <section id="results-section" class="mt-10 hidden">
                 <h2 class="text-3xl font-bold text-center mb-8 text-gray-800">Matching Results</h2>
                 <div id="loader" class="loader mx-auto hidden"></div>
                 <div id="results-output" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Results will be injected here by JavaScript -->
+                    
                 </div>
             </section>
         </main>
@@ -105,7 +105,7 @@
                 }
             });
 
-            // Handle CV Upload
+            // Handles CV Upload
             cvUploadForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const formData = new FormData();
@@ -140,7 +140,7 @@
                 }
             });
 
-            // Handle Job Description submission and matching
+            // Job Description Submission and matching
             jdForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const jobDescription = jdInput.value.trim();
